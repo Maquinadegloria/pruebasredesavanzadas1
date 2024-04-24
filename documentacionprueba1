@@ -1,0 +1,51 @@
+DOCUMENTACIÓN DEL CÓDIGO
+DESCRIPCIÓN GENERAL
+El código proporciona una herramienta para administrar campus y dispositivos de red. Permite agregar, 
+modificar y eliminar campus, así como también agregar dispositivos a dichos campus, especificando detalles como 
+nombre, modelo, interfaces, direcciones IP, VLANs y servicios asociados.
+
+Funciones
+class Campus: Define un campus con su nombre, descripción y una lista de dispositivos asociados.
+__init__: Inicializa una instancia de la clase Campus con nombre y descripción proporcionados.
+class Dispositivo: Define un dispositivo de red con nombre, modelo, capa jerárquica, interfaces, direcciones IP, VLANs y servicios.
+__init__(self, nombre, modelo, capa, interfaces, ips_masks, vlans, servicios): Este método inicializa una instancia de la clase Dispositivo con los parámetros proporcionados, representando así un dispositivo de red.
+es_direccion_ipv4(direccion): Utiliza una expresión regular para verificar si la cadena cumple con el formato de una dirección IPv4 válida. Retorna True si la cadena es una dirección IPv4 válida, y False en caso contrario.
+class AdministradorRedes: Administra la carga y guardado de datos desde y hacia archivos JSON, así como también la interpretación de estos archivos para generar un formato de texto específico.
+__init__(self, nombre_archivo): Este método inicializa una instancia de la clase AdministradorRedes con el nombre del archivo de datos proporcionado, cargando los datos desde el archivo si este existe.
+cargar_desde_archivo(self): Carga los datos desde un archivo JSON y los almacena en la instancia de la clase, creando instancias de Campus y Dispositivo según los datos del archivo.
+guardar_en_archivo(self): Guarda los datos de la instancia de la clase en un archivo JSON.
+interpretar_json_y_guardar_texto(self, archivo_texto): Interpreta los datos de un archivo JSON, los convierte a formato de texto y los guarda en un archivo especificado.
+convertir_a_formato_texto(self): Convierte los datos de la instancia de la clase a formato de texto.
+menu_principal(self): Muestra el menú principal y permite al usuario seleccionar una opción, ejecutando las funciones correspondientes según la opción seleccionada.
+administrar_campus(self): Muestra el menú de administración de campus y permite al usuario seleccionar una opción para agregar, modificar o eliminar campus.
+administrar_dispositivos(self): Muestra el menú de administración de dispositivos y permite al usuario agregar dispositivos a un campus existente.
+agregar_campus(self): Agrega un nuevo campus a la instancia de la clase.
+modificar_campus(self): Modifica la descripción de un campus existente en la instancia de la clase.
+borrar_campus(self): Elimina un campus existente de la instancia de la clase.
+agregar_dispositivos(self, nombre_campus): Agrega dispositivos a un campus existente en la instancia de la clase.
+seleccionar_capa(self): Muestra el menú de selección de capa y permite al usuario seleccionar una opción.
+ingresar_ips_masks(self, interfaces): Solicita al usuario ingresar las direcciones IP y máscaras de red para las interfaces de un dispositivo.
+ingresar_vlans(self): Solicita al usuario ingresar los nombres y números de VLAN para un dispositivo.
+
+ENTRADA PARAMETROS DEL USUARIO
+El usuario puede interactuar con el programa mediante el menú principal, seleccionando opciones numeradas que corresponden a las distintas funcionalidades ofrecidas, como administrar campus, dispositivos, guardar información en archivo de texto, interpretar archivos JSON
+
+
+
+
+FLUJO DEL PROGRAMA
+El programa comienza solicitando al usuario el nombre del archivo para cargar o crear la información. Luego, muestra el menú principal donde el usuario puede elegir las acciones a realizar.
+
+USO DEL PROGRAMA
+ejecutamos el programa y nos encontramos con el menú principal:
+
+
+
+Luego, podríamos seleccionar la opción "1" para administrar campus. Entonces, se nos presentaría un submenú con opciones para agregar, modificar o borrar campus existentes
+
+
+
+Si seleccionamos "1" para agregar un nuevo campus, ingresaríamos el nombre y la descripción del nuevo campus como, por ejemplo: 
+
+
+
