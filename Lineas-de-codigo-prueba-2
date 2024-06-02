@@ -4,31 +4,25 @@ import ipaddress
 import re
 
 class Campus:
+    """Representa un campus dentro de la red."""
     def __init__(self, nombre, descripcion):
         self.nombre = nombre
         self.descripcion = descripcion
         self.dispositivos = []
 
 class Dispositivo:
-    def __init__(self, nombre, modelo, capa, interfaces, ips_masks, vlans, servicios):
+    """Representa un dispositivo de red."""
+    def __init__(self, nombre, modelo, capa, interfaces, ips_masks=None, vlans=None, servicios=None):
         self.nombre = nombre
         self.modelo = modelo
         self.capa = capa
         self.interfaces = interfaces
-        self.ips_masks = ips_masks
-        self.vlans = vlans
-        self.servicios = servicios
+        self.ips_masks = ips_masks if ips_masks else {}  
+        self.vlans = vlans if vlans else {}  
+        self.servicios = servicios if servicios else []  
 
 def es_direccion_ipv4(direccion):
-    """
-    Valida si una dirección es una dirección IPv4 válida.
-    
-    Args:
-        direccion (str): La dirección IP a validar.
-    
-    Returns:
-        bool: True si la dirección es una dirección IPv4 válida, False en caso contrario.
-    """
+    """Valida si una dirección es una dirección IPv4 válida."""
     try:
         ipaddress.ip_address(direccion)
         return True
@@ -36,167 +30,137 @@ def es_direccion_ipv4(direccion):
         return False
 
 class AdministradorRedes:
-    """
-    Clase que representa un administrador de redes.
-
-    Attributes:
-        nombre_archivo (str): El nombre del archivo utilizado para cargar y guardar los datos.
-        campus (dict): Un diccionario que almacena los campus y sus respectivos dispositivos.
-    """
-
+    """Clase principal para administrar campus y dispositivos de red."""
     def __init__(self, nombre_archivo):
-        """
-        Inicializa una instancia de la clase AdministradorRedes.
-
-        Args:
-            nombre_archivo (str): El nombre del archivo utilizado para cargar y guardar los datos.
-        """
         self.nombre_archivo = nombre_archivo
         self.campus = {}
-        if os.path.exists(nombre_archivo):
-            self.cargar_desde_archivo()
+        self.cargar_desde_archivo()
 
     def cargar_desde_archivo(self):
-        """
-        Carga los datos desde un archivo JSON y los almacena en la instancia de la clase.
-        """
-        with open(self.nombre_archivo, "r") as archivo:
-            datos = json.load(archivo)
-            for nombre, descripcion in datos["campus"].items():
-                campus = Campus(nombre, descripcion)
-                self.campus[nombre] = campus
+        """Carga los datos de campus y dispositivos desde el archivo JSON."""
+        if not os.path.exists(self.nombre_archivo):
+            return
 
-                dispositivos_info = datos.get(nombre, [])
-                for dispositivo_info in dispositivos_info:
-                    dispositivo = Dispositivo(**dispositivo_info)
-                    campus.dispositivos.append(dispositivo)
+        with open(self.nombre_archivo, "r") as archivo:
+            try:
+                datos = json.load(archivo)
+                for nombre, descripcion in datos.get("campus", {}).items():
+                    campus = Campus(nombre, descripcion)
+                    self.campus[nombre] = campus
+                    for dispositivo_info in datos.get(nombre, []):
+                        dispositivo = Dispositivo(**dispositivo_info)
+                        campus.dispositivos.append(dispositivo)
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Error al leer el archivo {self.nombre_archivo}: {e}")
 
     def guardar_en_archivo(self):
-        """
-        Guarda los datos de la instancia de la clase en un archivo JSON.
-        """
-        datos = {"campus": {}, "dispositivos": {}}
+        """Guarda los datos en un archivo JSON."""
+        datos = {"campus": {}}
         for nombre, campus in self.campus.items():
             datos["campus"][nombre] = campus.descripcion
-            datos[nombre] = []
-            for dispositivo in campus.dispositivos:
-                datos[nombre].append(dispositivo.__dict__)
+            datos[nombre] = [dispositivo.__dict__ for dispositivo in campus.dispositivos]
 
         with open(self.nombre_archivo, "w") as archivo:
             json.dump(datos, archivo, indent=4)
 
-    def interpretar_json_y_guardar_texto(self, archivo_texto):
-        """
-        Interpreta los datos de un archivo JSON, los convierte a formato de texto y los guarda en un archivo.
-
-        Args:
-            archivo_texto (str): El nombre del archivo de texto en el que se guardarán los datos convertidos.
-        """
-        if os.path.exists(self.nombre_archivo):
-            with open(self.nombre_archivo, "r") as archivo:
-                datos = json.load(archivo)
-                for nombre, descripcion in datos["campus"].items():
-                    campus = Campus(nombre, descripcion)
-                    self.campus[nombre] = campus
-
-                    dispositivos_info = datos.get(nombre, [])
-                    for dispositivo_info in dispositivos_info:
-                        dispositivo = Dispositivo(**dispositivo_info)
-                        campus.dispositivos.append(dispositivo)
-
-            texto_formato = self.convertir_a_formato_texto()
-            with open(archivo_texto, "w") as archivo_texto:
-                archivo_texto.write(texto_formato)
-            print(f"Datos convertidos y guardados en el archivo: {archivo_texto}")
-
     def convertir_a_formato_texto(self):
-        """
-        Convierte los datos de la instancia de la clase a formato de texto.
-
-        Returns:
-            str: Los datos convertidos en formato de texto.
-        """
-        texto_formato = ""
+        """Convierte los datos a formato de texto legible."""
+        texto = ""
         for nombre, campus in self.campus.items():
-            texto_formato += f"Campus: {nombre}\nDescripción: {campus.descripcion}\n"
+            texto += f"Campus: {nombre}\nDescripción: {campus.descripcion}\n"
             for dispositivo in campus.dispositivos:
-                texto_formato += f"\nDispositivo: {dispositivo.nombre}\n"
-                texto_formato += f"Modelo: {dispositivo.modelo}\n"
-                texto_formato += f"Capa: {dispositivo.capa}\n"
-                texto_formato += "Interfaces:\n"
+                texto += f"\nDispositivo: {dispositivo.nombre}\n"
+                texto += f"Modelo: {dispositivo.modelo}\n"
+                texto += f"Capa: {dispositivo.capa}\n"
+                texto += "Interfaces:\n"
                 for interface in dispositivo.interfaces:
-                    ip, mask = dispositivo.ips_masks.get(interface, ("", ""))
-                    texto_formato += f"- {interface}: IP: {ip}, Máscara: {mask}\n"
-                texto_formato += "VLANs:\n"
+                    ip, mask = dispositivo.ips_masks.get(interface, ("No configurada", "No configurada"))
+                    texto += f"- {interface}: IP: {ip}, Máscara: {mask}\n"
+                texto += "VLANs:\n"
                 for vlan, numero in dispositivo.vlans.items():
-                    texto_formato += f"- {vlan}: {numero}\n"
-                texto_formato += f"Servicios: {', '.join(dispositivo.servicios)}\n"
-                texto_formato += "-" * 30 + "\n"
-        return texto_formato
+                    texto += f"- {vlan}: {numero}\n"
+                texto += f"Servicios: {', '.join(dispositivo.servicios)}\n"
+                texto += "-" * 30 + "\n"
+        return texto
+
+    def guardar_y_convertir_datos(self):
+        """Guarda los datos en JSON y luego los convierte a texto."""
+        self.guardar_en_archivo()
+        print("Datos guardados en formato JSON.")
+
+        archivo_texto = input("Ingrese el nombre del archivo de texto para guardar los datos convertidos: ")
+        with open(archivo_texto, "w") as archivo:
+            archivo.write(self.convertir_a_formato_texto())
+        print(f"Datos convertidos y guardados en el archivo: {archivo_texto}")
+
+    def limpiar_pantalla(self):
+        """Limpia la pantalla de la consola."""
+        os.system('cls' if os.name == 'nt' else 'clear')
 
     def menu_principal(self):
-        """
-        Muestra el menú principal y permite al usuario seleccionar una opción.
-        """
+        """Muestra el menú principal y permite al usuario seleccionar una opción."""
+        opciones = {
+            "1": self.administrar_campus,
+            "2": self.administrar_dispositivos,
+            "3": self.guardar_y_convertir_datos,
+            "4": self.salir
+        }
+
         while True:
-            os.system("clear")
+            self.limpiar_pantalla()
             print("¡Bienvenido al Administrador de Redes!")
             print("1. Administrar campus")
             print("2. Administrar dispositivos de red")
-            print("3. Guardar información en archivo de texto")
-            print("4. Interpretar archivo JSON, convertir a formato de texto y guardar")
-            print("5. Salir")
+            print("3. Guardar y convertir datos")
+            print("4. Salir")
             opcion = input("Seleccione una opción: ")
-            if opcion == "1":
-                self.administrar_campus()
-            elif opcion == "2":
-                self.administrar_dispositivos()
-            elif opcion == "3":
-                self.guardar_en_archivo()
-            elif opcion == "4":
-                archivo_texto = input("Ingrese el nombre del archivo de texto para guardar los datos: ")
-                self.interpretar_json_y_guardar_texto(archivo_texto)
-                input("Presione Enter para continuar.")
-            elif opcion == "5":
-                print("¡Hasta luego!")
-                break
+
+            if opcion in opciones:
+                opciones[opcion]()
             else:
                 input("Opción no válida. Presione Enter para continuar.")
 
+    def salir(self):
+        """Sale del programa."""
+        print("¡Hasta luego!")
+        exit()
+
     def administrar_campus(self):
-        """
-        Muestra el menú de administración de campus y permite al usuario seleccionar una opción.
-        """
+        """Muestra el menú de administración de campus y permite al usuario seleccionar una opción."""
+        opciones = {
+            "1": self.agregar_campus,
+            "2": self.modificar_campus,
+            "3": self.borrar_campus,
+            "4": lambda: None
+        }
+
         while True:
-            os.system("clear")
+            self.limpiar_pantalla()
             print("Campus:")
             for nombre in sorted(self.campus.keys()):
                 print(nombre)
             opcion = input("Seleccione una opción:\n1. Agregar campus\n2. Modificar campus\n3. Borrar campus\n4. Volver al menú principal\n")
-            if opcion == "1":
-                self.agregar_campus()
-            elif opcion == "2":
-                self.modificar_campus()
-            elif opcion == "3":
-                self.borrar_campus()
-            elif opcion == "4":
-                break
+
+            if opcion in opciones:
+                if opcion == "4":
+                    break
+                else:
+                    opciones[opcion]()
             else:
                 input("Opción no válida. Presione Enter para continuar.")
 
     def agregar_campus(self):
-        """
-        Agrega un nuevo campus a la instancia de la clase.
-        """
+        """Agrega un nuevo campus a la instancia de la clase."""
         nombre = input("Ingrese el nombre del campus: ")
         descripcion = input("Ingrese una descripción del campus: ")
-        self.campus[nombre] = Campus(nombre, descripcion)
-        input("Campus agregado. Presione Enter para continuar.")
+        if nombre in self.campus:
+            input("El campus ya existe. Presione Enter para continuar.")
+        else:
+            self.campus[nombre] = Campus(nombre, descripcion)
+            input("Campus agregado. Presione Enter para continuar.")
 
     def modificar_campus(self):
-        """
-        Modifica la descripción de un campus existente en la instancia de la clase.
-        """
+        """Modifica la descripción de un campus existente en la instancia de la clase."""
         nombre = input("Ingrese el nombre del campus que desea modificar: ")
         if nombre in self.campus:
             nueva_descripcion = input("Ingrese la nueva descripción del campus: ")
@@ -206,9 +170,7 @@ class AdministradorRedes:
             input("El campus especificado no existe. Presione Enter para continuar.")
 
     def borrar_campus(self):
-        """
-        Elimina un campus existente de la instancia de la clase.
-        """
+        """Elimina un campus existente de la instancia de la clase."""
         nombre = input("Ingrese el nombre del campus que desea borrar: ")
         if nombre in self.campus:
             del self.campus[nombre]
@@ -217,106 +179,160 @@ class AdministradorRedes:
             input("El campus especificado no existe. Presione Enter para continuar.")
 
     def administrar_dispositivos(self):
-        """
-        Muestra el menú de administración de dispositivos y permite al usuario seleccionar una opción.
-        """
+        """Administra los dispositivos dentro de un campus."""
+        self.limpiar_pantalla()
+        print("Campus disponibles:")
+        for nombre in sorted(self.campus.keys()):
+            print(f"- {nombre}")
+
+        nombre_campus = input("Ingrese el nombre del campus para administrar dispositivos: ")
+        if nombre_campus not in self.campus:
+            input("El campus especificado no existe. Presione Enter para continuar.")
+            return
+
         while True:
-            os.system("clear")
-            print("Campus disponibles:")
-            for nombre, campus in self.campus.items():
-                print(f"{nombre}: {campus.descripcion}")
-            campus_seleccionado = input("Ingrese el nombre del campus en el que desea agregar dispositivos (o 'fin' para salir): ")
-            if campus_seleccionado.lower() == "fin":
+            self.limpiar_pantalla()
+            print("Dispositivos en el campus:")
+            for dispositivo in self.campus[nombre_campus].dispositivos:
+                print(f"{dispositivo.nombre} ({dispositivo.modelo})")
+            opcion = input("Seleccione una opción:\n1. Agregar dispositivo\n2. Modificar dispositivo\n3. Ver dispositivo\n4. Borrar dispositivo\n5. Volver al menú anterior\n")
+            if opcion == "5":
                 break
-            elif campus_seleccionado in self.campus:
-                self.agregar_dispositivos(campus_seleccionado)
+            elif opcion == "1":
+                self.agregar_dispositivos(nombre_campus)
+            elif opcion == "2":
+                self.modificar_dispositivo(nombre_campus)
+            elif opcion == "3":
+                self.ver_dispositivo(nombre_campus)
+            elif opcion == "4":
+                self.borrar_dispositivo(nombre_campus)
             else:
-                print("El campus especificado no existe.") 
+                input("Opción no válida. Presione Enter para continuar.")
 
     def agregar_dispositivos(self, nombre_campus):
-        """
-        Agrega dispositivos a un campus existente en la instancia de la clase.
-
-        Args:
-            nombre_campus (str): El nombre del campus al que se agregarán los dispositivos.
-        """
-        os.system("clear")
-        dispositivos_nuevos = []
+        """Agrega dispositivos a un campus existente en la instancia de la clase."""
+        self.limpiar_pantalla()
         while True:
             nombre = input("Ingrese el nombre del dispositivo (o 'fin' para salir): ")
             if nombre.lower() == "fin":
                 break
+            if not nombre:
+                print("El nombre del dispositivo no puede estar vacío.")
+                continue
             modelo = input("Ingrese el modelo del dispositivo: ")
+            if not modelo:
+                print("El modelo del dispositivo no puede estar vacío.")
+                continue
             capa = self.seleccionar_capa()
             interfaces = input("Ingrese las interfaces de red del dispositivo (separadas por coma): ").split(",")
             ips_masks = self.ingresar_ips_masks(interfaces)
             vlans = self.ingresar_vlans()
             servicios = input("Ingrese los servicios de red configurados (separados por coma): ").split(",")
-
             dispositivo = Dispositivo(nombre, modelo, capa, interfaces, ips_masks, vlans, servicios)
-            dispositivos_nuevos.append(dispositivo)
-        
-        self.campus[nombre_campus].dispositivos.extend(dispositivos_nuevos)
-        print("Dispositivos agregados.")
+            self.campus[nombre_campus].dispositivos.append(dispositivo)
+            print("Dispositivo agregado.")
 
     def seleccionar_capa(self):
-        """
-        Muestra el menú de selección de capa y permite al usuario seleccionar una opción.
-
-        Returns:
-            str: La capa seleccionada.
-        """
-        print("Seleccione la capa jerárquica a la que pertenece:")
-        print("1) Núcleo")
-        print("2) Distribución")
-        print("3) Acceso")
-        capa_opcion = input("Opción: ")
-        if capa_opcion == "1":
-            return "Núcleo"
-        elif capa_opcion == "2":
-            return "Distribución"
-        elif capa_opcion == "3":
-            return "Acceso"
-        else:
-            return "Desconocida"
+        """Muestra el menú de selección de capa y permite al usuario seleccionar una opción."""
+        while True:
+            print("Seleccione la capa jerárquica a la que pertenece:")
+            print("1) Núcleo")
+            print("2) Distribución")
+            print("3) Acceso")
+            capa_opcion = input("Opción: ")
+            if capa_opcion == "1":
+                return "Núcleo"
+            elif capa_opcion == "2":
+                return "Distribución"
+            elif capa_opcion == "3":
+                return "Acceso"
+            else:
+                print("Opción no válida. Inténtelo de nuevo.")
 
     def ingresar_ips_masks(self, interfaces):
-        """
-        Solicita al usuario ingresar las direcciones IP y máscaras de red para las interfaces de un dispositivo.
-
-        Args:
-            interfaces (list): Una lista de las interfaces del dispositivo.
-
-        Returns:
-            dict: Un diccionario que mapea cada interfaz con su dirección IP y máscara de red correspondientes.
-        """
+        """Solicita al usuario ingresar las direcciones IP y máscaras de red para las interfaces de un dispositivo."""
         ips_masks = {}
         for interfaz in interfaces:
             while True:
                 ip = input(f"Ingrese la dirección IP para la interfaz {interfaz}: ")
+                if not es_direccion_ipv4(ip):
+                    print("Dirección IP no válida. Inténtelo nuevamente.")
+                    continue
                 mask = input(f"Ingrese la máscara de red para la interfaz {interfaz}: ")
-                if es_direccion_ipv4(ip):
-                    ips_masks[interfaz] = (ip, mask)
+                try:
+                    ip_obj = ipaddress.ip_interface(f"{ip}/{mask}")
+                    ips_masks[interfaz] = (str(ip_obj.ip), str(ip_obj.netmask))
                     break
-                else:
-                    print("La dirección IP ingresada no es válida. Inténtelo nuevamente.")
+                except ValueError:
+                    print("Máscara de red no válida. Inténtelo nuevamente.")
         return ips_masks
 
     def ingresar_vlans(self):
-        """
-        Solicita al usuario ingresar los nombres y números de VLAN para un dispositivo.
-
-        Returns:
-            dict: Un diccionario que mapea cada nombre de VLAN con su número correspondiente.
-        """
+        """Solicita al usuario ingresar los nombres y números de VLAN para un dispositivo."""
         vlans = {}
         while True:
             nombre_vlan = input("Ingrese el nombre de la VLAN (o 'fin' para terminar): ")
             if nombre_vlan.lower() == 'fin':
                 break
-            numero_vlan = input("Ingrese el número de la VLAN: ")
-            vlans[nombre_vlan] = numero_vlan
+            try:
+                numero_vlan = int(input("Ingrese el número de la VLAN: "))
+                vlans[nombre_vlan] = numero_vlan
+            except ValueError:
+                print("El número de VLAN debe ser un entero. Inténtelo de nuevo.")
         return vlans
+
+    def modificar_dispositivo(self, nombre_campus):
+        """Modifica un dispositivo existente en un campus."""
+        nombre_dispositivo = input("Ingrese el nombre del dispositivo que desea modificar: ")
+        for dispositivo in self.campus[nombre_campus].dispositivos:
+            if dispositivo.nombre == nombre_dispositivo:
+                modelo = input(f"Ingrese el nuevo modelo del dispositivo (actual: {dispositivo.modelo}): ")
+                capa = self.seleccionar_capa()
+                nuevas_interfaces = input("Ingrese las nuevas interfaces de red del dispositivo (separadas por coma): ").split(",")
+                nuevas_ips_masks = self.ingresar_ips_masks(nuevas_interfaces)
+                nuevas_vlans = self.ingresar_vlans()
+                nuevos_servicios = input(f"Ingrese los nuevos servicios de red configurados (actual: {', '.join(dispositivo.servicios)}): ").split(",")
+
+                dispositivo.modelo = modelo
+                dispositivo.capa = capa
+                dispositivo.interfaces.extend(nuevas_interfaces)
+                dispositivo.ips_masks.update(nuevas_ips_masks)
+                dispositivo.vlans.update(nuevas_vlans)
+                dispositivo.servicios = nuevos_servicios
+
+                print("Dispositivo modificado.")
+                return
+        print("Dispositivo no encontrado.")
+
+    def ver_dispositivo(self, nombre_campus):
+        """Muestra la información de un dispositivo existente en un campus."""
+        nombre_dispositivo = input("Ingrese el nombre del dispositivo que desea ver: ")
+        for dispositivo in self.campus[nombre_campus].dispositivos:
+            if dispositivo.nombre == nombre_dispositivo:
+                print(f"Nombre: {dispositivo.nombre}")
+                print(f"Modelo: {dispositivo.modelo}")
+                print(f"Capa: {dispositivo.capa}")
+                print("Interfaces:")
+                for interface in dispositivo.interfaces:
+                    ip, mask = dispositivo.ips_masks.get(interface, ("", ""))
+                    print(f"- {interface}: IP: {ip}, Máscara: {mask}")
+                print("VLANs:")
+                for vlan, numero in dispositivo.vlans.items():
+                    print(f"- {vlan}: {numero}")
+                print(f"Servicios: {', '.join(dispositivo.servicios)}")
+                input("Presione Enter para continuar.")
+                return
+        print("Dispositivo no encontrado.")
+
+    def borrar_dispositivo(self, nombre_campus):
+        """Elimina un dispositivo existente de un campus."""
+        nombre_dispositivo = input("Ingrese el nombre del dispositivo que desea borrar: ")
+        for dispositivo in self.campus[nombre_campus].dispositivos:
+            if dispositivo.nombre == nombre_dispositivo:
+                self.campus[nombre_campus].dispositivos.remove(dispositivo)
+                print("Dispositivo eliminado.")
+                return
+        print("Dispositivo no encontrado.")
 
 if __name__ == "__main__":
     nombre_archivo = input("Ingrese el nombre del archivo para cargar o crear la información: ")
