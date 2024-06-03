@@ -2,5 +2,4 @@ API.py
 requests
 git
 github
-# Ignore the .env file
 .env
