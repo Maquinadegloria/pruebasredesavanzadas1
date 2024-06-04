@@ -1,2 +1,1 @@
-# En este repositorio se encuentran los
-codigos de redes avanzadas 1
+# En este repositorio se encuentran los codigos de Redes Avanzadas 1
