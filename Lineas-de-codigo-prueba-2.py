@@ -1,36 +1,48 @@
 import os
 import json
-import ipaddress
 import re
+import ipaddress
 
 class Campus:
-    """Representa un campus dentro de la red."""
+    """Representa un campus con una descripción y una lista de dispositivos."""
     def __init__(self, nombre, descripcion):
-        self.nombre = nombre
-        self.descripcion = descripcion
-        self.dispositivos = []
+        self.nombre = nombre  # Nombre del campus
+        self.descripcion = descripcion  # Descripción del campus
+        self.dispositivos = []  # Lista de dispositivos en el campus
 
 class Dispositivo:
-    """Representa un dispositivo de red."""
-    def __init__(self, nombre, modelo, capa, interfaces, ips_masks=None, vlans=None, servicios=None):
-        self.nombre = nombre
-        self.modelo = modelo
-        self.capa = capa
-        self.interfaces = interfaces
-        self.ips_masks = ips_masks if ips_masks else {}  
-        self.vlans = vlans if vlans else {}  
-        self.servicios = servicios if servicios else []  
+    """Representa un dispositivo de red con sus atributos."""
+    def __init__(self, nombre, modelo, capa, interfaces, ips_masks, vlans, servicios):
+        self.nombre = nombre  # Nombre del dispositivo
+        self.modelo = modelo  # Modelo del dispositivo
+        self.capa = capa  # Capa jerárquica del dispositivo
+        self.interfaces = interfaces  # Lista de interfaces de red del dispositivo
+        self.ips_masks = ips_masks  # Diccionario de IPs y máscaras de red por interfaz
+        self.vlans = vlans  # Diccionario de VLANs
+        self.servicios = servicios  # Lista de servicios de red configurados
 
 def es_direccion_ipv4(direccion):
-    """Valida si una dirección es una dirección IPv4 válida."""
-    try:
-        ipaddress.ip_address(direccion)
+    """Valida si una dirección IP es válida."""
+    patron = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+    if patron.match(direccion):
+        octetos = direccion.split('.')
+        for octeto in octetos:
+            if int(octeto) < 0 or int(octeto) > 255:
+                return False
         return True
-    except ValueError:
+    return False
+
+def es_direccion_ipv6(direccion):
+    """Valida si una dirección IPv6 es válida."""
+    try:
+        ipaddress.IPv6Address(direccion)
+        return True
+    except ipaddress.AddressValueError:
         return False
 
 class AdministradorRedes:
     """Clase principal para administrar campus y dispositivos de red."""
+    
     def __init__(self, nombre_archivo):
         self.nombre_archivo = nombre_archivo
         self.campus = {}
@@ -88,10 +100,18 @@ class AdministradorRedes:
         self.guardar_en_archivo()
         print("Datos guardados en formato JSON.")
 
-        archivo_texto = input("Ingrese el nombre del archivo de texto para guardar los datos convertidos: ")
-        with open(archivo_texto, "w") as archivo:
-            archivo.write(self.convertir_a_formato_texto())
-        print(f"Datos convertidos y guardados en el archivo: {archivo_texto}")
+        while True:
+            archivo_texto = input("Ingrese el nombre del archivo de texto para guardar los datos convertidos: ")
+            if archivo_texto:
+                try:
+                    with open(archivo_texto, "w") as archivo:
+                        archivo.write(self.convertir_a_formato_texto())
+                    print(f"Datos convertidos y guardados en el archivo: {archivo_texto}")
+                    break
+                except IOError as e:
+                    print(f"Error al escribir en el archivo: {e}")
+            else:
+                print("El nombre del archivo no puede estar vacío. Por favor, inténtelo de nuevo.")
 
     def limpiar_pantalla(self):
         """Limpia la pantalla de la consola."""
@@ -103,7 +123,8 @@ class AdministradorRedes:
             "1": self.administrar_campus,
             "2": self.administrar_dispositivos,
             "3": self.guardar_y_convertir_datos,
-            "4": self.salir
+            "4": self.ver_campus,
+            "5": self.salir
         }
 
         while True:
@@ -112,7 +133,8 @@ class AdministradorRedes:
             print("1. Administrar campus")
             print("2. Administrar dispositivos de red")
             print("3. Guardar y convertir datos")
-            print("4. Salir")
+            print("4. Ver campus y dispositivos")
+            print("5. Salir")
             opcion = input("Seleccione una opción: ")
 
             if opcion in opciones:
@@ -210,27 +232,29 @@ class AdministradorRedes:
                 input("Opción no válida. Presione Enter para continuar.")
 
     def agregar_dispositivos(self, nombre_campus):
-        """Agrega dispositivos a un campus existente en la instancia de la clase."""
-        self.limpiar_pantalla()
-        while True:
-            nombre = input("Ingrese el nombre del dispositivo (o 'fin' para salir): ")
-            if nombre.lower() == "fin":
-                break
-            if not nombre:
-                print("El nombre del dispositivo no puede estar vacío.")
-                continue
-            modelo = input("Ingrese el modelo del dispositivo: ")
-            if not modelo:
-                print("El modelo del dispositivo no puede estar vacío.")
-                continue
-            capa = self.seleccionar_capa()
-            interfaces = input("Ingrese las interfaces de red del dispositivo (separadas por coma): ").split(",")
-            ips_masks = self.ingresar_ips_masks(interfaces)
-            vlans = self.ingresar_vlans()
-            servicios = input("Ingrese los servicios de red configurados (separados por coma): ").split(",")
-            dispositivo = Dispositivo(nombre, modelo, capa, interfaces, ips_masks, vlans, servicios)
-            self.campus[nombre_campus].dispositivos.append(dispositivo)
-            print("Dispositivo agregado.")
+        """Agrega un nuevo dispositivo a un campus existente."""
+        nombre = input("Ingrese el nombre del dispositivo: ")
+        modelo = input("Ingrese el modelo del dispositivo: ")
+        capa = self.seleccionar_capa()
+        interfaces = input("Ingrese las interfaces de red del dispositivo (separadas por coma): ").split(",")
+        interfaces = [interface.strip() for interface in interfaces if interface.strip()]
+        ips_masks = self.ingresar_ips_masks(interfaces)
+        vlans = self.ingresar_vlans()
+        servicios = input("Ingrese los servicios de red configurados (separados por coma): ").split(",")
+        servicios = [servicio.strip() for servicio in servicios if servicio.strip()]
+
+        dispositivo = Dispositivo(
+            nombre=nombre,
+            modelo=modelo,
+            capa=capa,
+            interfaces=interfaces,
+            ips_masks=ips_masks,
+            vlans=vlans,
+            servicios=servicios
+        )
+        self.campus[nombre_campus].dispositivos.append(dispositivo)
+        print("Dispositivo agregado.")
+        input("Presione Enter para continuar.")
 
     def seleccionar_capa(self):
         """Muestra el menú de selección de capa y permite al usuario seleccionar una opción."""
@@ -255,16 +279,16 @@ class AdministradorRedes:
         for interfaz in interfaces:
             while True:
                 ip = input(f"Ingrese la dirección IP para la interfaz {interfaz}: ")
-                if not es_direccion_ipv4(ip):
+                if es_direccion_ipv4(ip) or es_direccion_ipv6(ip):
+                    mask = input(f"Ingrese la máscara de red para la interfaz {interfaz}: ")
+                    try:
+                        ip_obj = ipaddress.ip_interface(f"{ip}/{mask}")
+                        ips_masks[interfaz] = (str(ip_obj.ip), str(ip_obj.netmask))
+                        break
+                    except ValueError:
+                        print("Máscara de red no válida. Inténtelo nuevamente.")
+                else:
                     print("Dirección IP no válida. Inténtelo nuevamente.")
-                    continue
-                mask = input(f"Ingrese la máscara de red para la interfaz {interfaz}: ")
-                try:
-                    ip_obj = ipaddress.ip_interface(f"{ip}/{mask}")
-                    ips_masks[interfaz] = (str(ip_obj.ip), str(ip_obj.netmask))
-                    break
-                except ValueError:
-                    print("Máscara de red no válida. Inténtelo nuevamente.")
         return ips_masks
 
     def ingresar_vlans(self):
@@ -301,8 +325,10 @@ class AdministradorRedes:
                 dispositivo.servicios = nuevos_servicios
 
                 print("Dispositivo modificado.")
+                input("Presione Enter para continuar.")
                 return
         print("Dispositivo no encontrado.")
+        input("Presione Enter para continuar.")
 
     def ver_dispositivo(self, nombre_campus):
         """Muestra la información de un dispositivo existente en un campus."""
@@ -323,6 +349,26 @@ class AdministradorRedes:
                 input("Presione Enter para continuar.")
                 return
         print("Dispositivo no encontrado.")
+        input("Presione Enter para continuar.")
+
+    def ver_campus(self):
+        """Muestra la información de todos los campus y dispositivos."""
+        for nombre, campus in self.campus.items():
+            print(f"Campus: {nombre}\nDescripción: {campus.descripcion}")
+            for dispositivo in campus.dispositivos:
+                print(f"  Dispositivo: {dispositivo.nombre}")
+                print(f"  Modelo: {dispositivo.modelo}")
+                print(f"  Capa: {dispositivo.capa}")
+                print("  Interfaces:")
+                for interface in dispositivo.interfaces:
+                    ip, mask = dispositivo.ips_masks.get(interface, ("", ""))
+                    print(f"    - {interface}: IP: {ip}, Máscara: {mask}")
+                print("  VLANs:")
+                for vlan, numero in dispositivo.vlans.items():
+                    print(f"    - {vlan}: {numero}")
+                print(f"  Servicios: {', '.join(dispositivo.servicios)}")
+                print("  " + "-" * 30)
+        input("Presione Enter para continuar.")
 
     def borrar_dispositivo(self, nombre_campus):
         """Elimina un dispositivo existente de un campus."""
@@ -331,10 +377,11 @@ class AdministradorRedes:
             if dispositivo.nombre == nombre_dispositivo:
                 self.campus[nombre_campus].dispositivos.remove(dispositivo)
                 print("Dispositivo eliminado.")
+                input("Presione Enter para continuar.")
                 return
         print("Dispositivo no encontrado.")
+        input("Presione Enter para continuar.")
 
 if __name__ == "__main__":
-    nombre_archivo = input("Ingrese el nombre del archivo para cargar o crear la información: ")
-    administrador = AdministradorRedes(nombre_archivo)
+    administrador = AdministradorRedes("datos_redes.json")
     administrador.menu_principal()
