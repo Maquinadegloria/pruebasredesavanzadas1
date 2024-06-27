@@ -1,0 +1,15 @@
+Campus: 1
+Descripción: 1
+
+Dispositivo: 1
+Modelo: 1
+Capa: nucleo
+Interfaces:
+- : IP: , Máscara: 
+VLANs:
+Servicios: 
+------------------------------
+Campus: 2
+Descripción: 2
+Campus: 3
+Descripción: 3
