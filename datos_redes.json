@@ -1,0 +1,87 @@
+{
+    "campus": {
+        "1": "1",
+        "2": "2",
+        "3": "3"
+    },
+    "1": [
+        {
+            "nombre": "Router-uno",
+            "modelo": "Cisco",
+            "capa": "Nucleo",
+            "interfaces": [
+                "Ethe0",
+                "Ethe1"
+            ],
+            "ips_masks": {
+                "Ethe0": [
+                    "192.168.0.1",
+                    "255.255.255.128"
+                ],
+                "Ethe1": [
+                    "192.168.0.2",
+                    "255.255.255.128"
+                ]
+            },
+            "vlans": {
+                "ADMIN": "100"
+            },
+            "servicios": [
+                ""
+            ]
+        }
+    ],
+    "2": [
+        {
+            "nombre": "Router-uno",
+            "modelo": "Cisco",
+            "capa": "Nucleo",
+            "interfaces": [
+                "Ethe0",
+                "Ethe1"
+            ],
+            "ips_masks": {
+                "Ethe0": [
+                    "192.168.1.1",
+                    "255.255.255.128"
+                ],
+                "Ethe1": [
+                    "192.168.1.2",
+                    "255.255.255.128"
+                ]
+            },
+            "vlans": {
+                "ADMIN": "100"
+            },
+            "servicios": [
+                "DHCP",
+                "NTP",
+                "SNMP",
+                "SMTP"
+            ]
+        },
+        {
+            "nombre": "Switch-uno",
+            "modelo": "Cisco",
+            "capa": "Distribucion",
+            "interfaces": [
+                "Ethe1"
+            ],
+            "ips_masks": {
+                "Ethe1": [
+                    "192.168.100.1",
+                    "255.255.255.255"
+                ]
+            },
+            "vlans": {
+                "ADMINISTRADOR": "99"
+            },
+            "servicios": [
+                "NTP",
+                "SNMP",
+                "SMTP"
+            ]
+        }
+    ],
+    "3": []
+}
